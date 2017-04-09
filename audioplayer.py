@@ -17,6 +17,7 @@ class AudioPlayer:
         self.pyaudio = pa.PyAudio()
 
     def loadAudioFile(self):
+        self.stop()
         self.channels = self.processor.channels
         self.sampleRate = self.processor.sampleRate
         self.audioLength = self.processor.audioLength
@@ -52,8 +53,9 @@ class AudioPlayer:
 
     def stop(self):
         """Stop playback for the current audio."""
-        self.stream.stop_stream()
-        self.playIndex = 0
+        if self.stream:
+            self.stream.stop_stream()
+            self.playIndex = 0
 
     def checkResetStream(self):
         """Resets the stream if it has finished playing."""
