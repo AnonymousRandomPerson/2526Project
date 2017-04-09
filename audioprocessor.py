@@ -18,7 +18,7 @@ class AudioProcessor:
 
         self.player = audioplayer.AudioPlayer(self)
 
-        self.instruments = {"Guitar": instrument.Guitar()}
+        self.instruments = {"Beep": instrument.Beep(), "Guitar": instrument.Guitar()}
         self.currentInstrument = None
 
     def getInstruments(self):
@@ -76,8 +76,9 @@ class AudioProcessor:
         """Creates new instrument data to match the current loaded track."""
 
         if self.fileTrack:
-            synthesizedData = self.currentInstrument.matchNotes(self.fileTrack.baseSamples)
+            synthesizedData = self.currentInstrument.matchNotes(self.fileTrack.baseSamples, self.sampleRate)
             self.synthesizedTrack = AudioTrack(synthesizedData)
+            self.reloadData(1)
 
     def initialized(self):
         """

@@ -46,7 +46,7 @@ class Gui:
         currentInstrument = StringVar()
         currentInstrument.set(instruments[0])
         self.processor.selectInstrument(instruments[0])
-        instrumentSelect = OptionMenu(self.settingsFrame, currentInstrument, instruments, command = self.selectInstrument)
+        instrumentSelect = OptionMenu(self.settingsFrame, currentInstrument, *instruments, command = self.selectInstrument)
         instrumentSelect.grid(row = 1, column = 0)
         self.playButtons.append(instrumentSelect)
 
@@ -143,7 +143,7 @@ class Gui:
         Args:
             selectedInstrument: The new instrument to be used.
         """
-        self.processor.selectInstrument(selectedInstrument[0])
+        self.processor.selectInstrument(selectedInstrument)
 
     def setErrorText(self, errorText):
         """
