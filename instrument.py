@@ -81,7 +81,18 @@ class Guitar(Instrument):
         Returns:
             A list of samples representing the note.
         """
-        samples = np.random.standard_normal(duration)
+        samples = []
+        buffer = np.random.standard_normal(int(sampleRate / frequency))
+
+        last = 0
+        bufferCounter = 0
+        for i in range(0, duration):
+            buffer[bufferCounter] = (last + buffer[bufferCounter]) / 2 * 0.998
+            samples.append(buffer[bufferCounter])
+            last = buffer[bufferCounter]
+            bufferCounter += 1
+            if bufferCounter >= len(buffer):
+                bufferCounter = 0
 
         samples = self.duplicateChannel(samples)
 
