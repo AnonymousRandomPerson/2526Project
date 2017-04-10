@@ -45,9 +45,10 @@ class Gui:
         instruments = self.processor.getInstruments()
         currentInstrument = StringVar()
         currentInstrument.set(instruments[0])
-        currentInstrument.set("Trumpet")
+        currentInstrument.set("Beep")
         self.processor.selectInstrument(currentInstrument.get())
         instrumentSelect = OptionMenu(self.settingsFrame, currentInstrument, *instruments, command = self.selectInstrument)
+        instrumentSelect.config(width = 13)
         instrumentSelect.grid(row = 1, column = 0)
         self.playButtons.append(instrumentSelect)
 
