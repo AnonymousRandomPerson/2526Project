@@ -91,8 +91,7 @@ class AudioProcessor:
         self.stop()
         reloadTrack.reload()
 
-        self.audioData = self.fileTrack.samples + self.synthesizedTrack.samples
-        self.player.audioData = self.audioData
+        self.player.loadSamples()
 
     def selectInstrument(self, newInstrument = None):
         """

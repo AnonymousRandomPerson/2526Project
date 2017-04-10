@@ -84,8 +84,8 @@ class Guitar(Instrument):
         samples = []
         buffer = np.random.standard_normal(int(sampleRate / frequency))
 
-        # Karplus-Strong algorithm
-        last = 0
+        # Karplus-Strong algorithm (feedback system, subtractive synthesis)
+        last = buffer[0]
         bufferCounter = 0
         for i in range(0, duration):
             buffer[bufferCounter] = (last + buffer[bufferCounter]) / 2 * 0.998
