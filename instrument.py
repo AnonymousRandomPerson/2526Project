@@ -81,7 +81,7 @@ class Guitar(Instrument):
         """
         samples = []
 
-        # Karplus-Strong algorithm, subtractive synthesis with delay line, feedback, LPF.
+        # Karplus-Strong algorithm, subtractive synthesis with delay line, feedback, low-pass filter.
         buffer = np.random.standard_normal(int(sampleRate / frequency))
         last = buffer[0]
         delayLine = queue.Queue(maxsize = 200)
@@ -136,6 +136,15 @@ class Trumpet(Instrument):
         samples = np.zeros(duration)
         for i, amplitude in enumerate(envelope):
             samples += amplitude * np.sin(frequency * (i + 1) * 2 * np.pi * time)
+
+        # High-pass filter
+        RC = 1 / (np.pi * frequency * 32)
+        alpha = RC / (RC + 1.0 / sampleRate)
+        newSamples = np.zeros(duration)
+        newSamples[0] = samples[0]
+        for i in range(1, duration):
+            newSamples[i] = alpha * (newSamples[i - 1] + samples[i] - samples[i - 1])
+        samples = newSamples
 
         # ADSR curve
         attackLength = int(0.075 * sampleRate)
