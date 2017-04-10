@@ -44,20 +44,52 @@ class AudioProcessor:
         self.audioData = self.fileTrack.samples + self.synthesizedTrack.samples
         self.player.loadAudioFile()
 
-    def reloadData(self, trackIndex, enabled = None):
+    def getTrackByIndex(self, trackIndex):
         """
-        Reloads the audio data after a setting has changed.
+        Gets a track by its index number.
+
+        Args:
+            trackIndex: 0 for the file track, 1 for the synthesized track.
+        """
+        if trackIndex == 0:
+            track = self.fileTrack
+        else:
+            track = self.synthesizedTrack
+        return track
+
+    def setEnabled(self, trackIndex, enabled):
+        """
+        Sets whether an audio track is enabled.
 
         Args:
             trackIndex: The track to reload.
             enabled: Whether the audio track is enabled.
         """
-        if trackIndex == 0:
-            reloadTrack = self.fileTrack
-        else:
-            reloadTrack = self.synthesizedTrack
+        track = self.getTrackByIndex(trackIndex)
+        track.enabled = enabled
+
+    def setVolume(self, trackIndex, volume):
+        """
+        Sets the volume of an audio track.
+
+        Args:
+            trackIndex: The track to reload.
+            volume: The volume [0,1] of the track.
+        """
+        track = self.getTrackByIndex(trackIndex)
+        if track:
+            track.volume = np.float32(volume)
+
+    def reloadData(self, trackIndex):
+        """
+        Reloads the audio data after a setting has changed.
+
+        Args:
+            trackIndex: The track to reload.
+        """
+        reloadTrack = self.getTrackByIndex(trackIndex)
         self.stop()
-        reloadTrack.reload(enabled)
+        reloadTrack.reload()
 
         self.audioData = self.fileTrack.samples + self.synthesizedTrack.samples
         self.player.audioData = self.audioData
@@ -118,19 +150,26 @@ class AudioTrack():
         self.samples = samples
         self.baseSamples = samples
         self.enabled = True
+        self.volume = np.float32(1.0)
+        self.enabled = True
 
-    def reload(self, enabled = None):
+    def reload(self):
         """
         Reloads the audio data after a setting has changed.
 
         Args:
             enabled: Whether the audio track is enabled.
         """
-        if enabled != None:
-            self.enabled = enabled
-
-        if not self.enabled:
-            self.samples = np.zeros((len(self.baseSamples), len(self.baseSamples[0])), dtype = np.float32)
-            return
-
         self.samples = self.baseSamples
+
+    def getVolume(self):
+        """
+        Gets the volume of the audio track.
+
+        Returns:
+            The volume of the audio track.
+        """
+        if self.enabled:
+            return self.volume
+        else:
+            return 0

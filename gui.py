@@ -45,7 +45,7 @@ class Gui:
         instruments = self.processor.getInstruments()
         currentInstrument = StringVar()
         currentInstrument.set(instruments[0])
-        currentInstrument.set("Trumpet")
+        #currentInstrument.set("Trumpet")
         self.processor.selectInstrument(currentInstrument.get())
         instrumentSelect = OptionMenu(self.settingsFrame, currentInstrument, *instruments, command = self.selectInstrument)
         instrumentSelect.grid(row = 1, column = 0)
@@ -89,11 +89,19 @@ class Gui:
         Returns:
             A frame containing the settings bar.
         """
+        columnCounter = 1
         enabled = IntVar()
         enabled.set(1)
         enabledButton = Checkbutton(self.settingsFrame, text = "Enabled", variable = enabled, command = lambda: self.enableTrack(row, enabled.get()))
-        enabledButton.grid(row = row, column = 1)
+        enabledButton.grid(row = row, column = columnCounter)
         self.playButtons.append(enabledButton)
+
+        columnCounter += 1
+        volumeVar = DoubleVar()
+        volumeVar.set(1.0)
+        volumeScale = Scale(self.settingsFrame, variable = volumeVar, from_ = 0.0, to = 1.0, resolution = 0.01, orient = HORIZONTAL, command = lambda volume: self.setVolume(row, volume))
+        volumeScale.grid(row = row, column = columnCounter)
+        self.playButtons.append(volumeScale)
 
     def enableTrack(self, track, enabled):
         """
@@ -103,7 +111,17 @@ class Gui:
             track: The track to enable or disable.
             enabled: Whether to enable the track.
         """
-        self.processor.reloadData(track, enabled = enabled)
+        self.processor.setEnabled(track, enabled)
+
+    def setVolume(self, track, volume):
+        """
+        Sets the volume of a certain track.
+
+        Args:
+            track: The track to set the volume of.
+            volume: The volume to set the track to.
+        """
+        self.processor.setVolume(track, volume)
 
     def setPlayButtonsEnabled(self, enabled):
         """

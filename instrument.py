@@ -115,6 +115,7 @@ class Trumpet(Instrument):
         """
         seconds = duration / sampleRate
 
+        # Additive synthesis
         envelope = [3.6, 2.825, 3, 2.688, 1.464, 1.520, 1.122, 0.940, 0.738, 0.495, 0.362, 0.237, 0.154, 0.154, 0.101, 0.082, 0.054, 0.038, 0.036]
 
         time = np.linspace(0, seconds, duration)
