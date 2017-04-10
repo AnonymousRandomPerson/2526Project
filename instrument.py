@@ -1,4 +1,6 @@
 import numpy as np
+import queue
+
 import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.pylab as plt
@@ -59,10 +61,6 @@ class Beep(Instrument):
         time = np.linspace(0, seconds, duration)
         samples = np.sin(frequency * 2 * np.pi * time)
 
-        if debug:
-            plt.plot(time, samples)
-            plt.show()
-
         samples = self.duplicateChannel(samples)
 
         return samples
@@ -82,18 +80,34 @@ class Guitar(Instrument):
             A list of samples representing the note.
         """
         samples = []
-        buffer = np.random.standard_normal(int(sampleRate / frequency))
 
-        # Karplus-Strong algorithm (feedback system, subtractive synthesis)
+        # Karplus-Strong algorithm, subtractive synthesis with delay line, feedback, LPF.
+        buffer = np.random.standard_normal(int(sampleRate / frequency))
         last = buffer[0]
+        delayLine = queue.Queue(maxsize = 200)
         bufferCounter = 0
         for i in range(0, duration):
-            buffer[bufferCounter] = (last + buffer[bufferCounter]) / 2 * 0.998
-            samples.append(buffer[bufferCounter])
-            last = buffer[bufferCounter]
+            current = (last + buffer[bufferCounter]) / 2
+            if delayLine.full():
+                delayed = delayLine.get()
+                delayed *= 0.999
+                current += delayed
+                current /= 2
+
+            samples.append(current)
+            delayLine.put(current)
+            last = current
+            buffer[bufferCounter] = current
+
             bufferCounter += 1
             if bufferCounter >= len(buffer):
                 bufferCounter = 0
+        
+        if debug:
+            seconds = duration / sampleRate
+            time = np.linspace(0, seconds, duration)
+            plt.plot(time, samples)
+            plt.show()
 
         samples = self.duplicateChannel(samples)
 
@@ -123,14 +137,15 @@ class Trumpet(Instrument):
         for i, amplitude in enumerate(envelope):
             samples += amplitude * np.sin(frequency * (i + 1) * 2 * np.pi * time)
 
+        # ADSR curve
         attackLength = int(0.075 * sampleRate)
         decayLength = int(0.3 * sampleRate)
         releaseLength = int(0.2 * sampleRate)
         sustainLength = duration - attackLength - decayLength - releaseLength
 
         if sustainLength >= 0:
-            peak = 1
-            sustain = 0.8
+            peak = 0.1
+            sustain = peak * 0.8
 
             adsr = np.linspace(0, peak, attackLength)
             adsr = np.append(adsr, np.linspace(peak, sustain, decayLength))

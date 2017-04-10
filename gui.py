@@ -45,7 +45,7 @@ class Gui:
         instruments = self.processor.getInstruments()
         currentInstrument = StringVar()
         currentInstrument.set(instruments[0])
-        #currentInstrument.set("Trumpet")
+        currentInstrument.set("Guitar")
         self.processor.selectInstrument(currentInstrument.get())
         instrumentSelect = OptionMenu(self.settingsFrame, currentInstrument, *instruments, command = self.selectInstrument)
         instrumentSelect.grid(row = 1, column = 0)
