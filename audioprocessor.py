@@ -129,7 +129,9 @@ class AudioProcessor:
             A list of lists [frequency, sample duration] representing notes that were detected.
         """
         audioData = self.fileTrack.baseSamples
-        notes = [[], []]
+        notes = []
+        for channel in range(self.channels):
+            notes.append([])
         duration = len(audioData)
         prevNotes = [None, None]
 
@@ -137,7 +139,6 @@ class AudioProcessor:
         sampleDuration = increment
         startIndex = 0
         lastNote = 0
-        startIndex = duration
         while startIndex < duration:
             for channel in range(self.channels):
                 prevNote = prevNotes[channel]
@@ -146,7 +147,10 @@ class AudioProcessor:
                 if endIndex > duration:
                     endIndex = duration
                     sampleDuration = duration - startIndex
-                currentSamples = audioData[startIndex:endIndex, channel]
+                if self.channels == 1:
+                    currentSamples = audioData[startIndex:endIndex]
+                else:
+                    currentSamples = audioData[startIndex:endIndex, channel]
 
                 # Autocorrelation pitch detection.
                 autocorrelation = signal.correlate(currentSamples, currentSamples)
@@ -183,12 +187,11 @@ class AudioProcessor:
 
             startIndex += increment
 
-        halfSample = int(self.sampleRate / 2)
-        #notes = [[(440, halfSample), (0, halfSample), (880, len(audioData) - self.sampleRate)],]
-        noteData = [(440, len(audioData))]
-        notes = []
-        for i in range(self.channels):
-            notes.append(noteData)
+        # halfSample = int(self.sampleRate / 2)
+        # noteData = [(440, halfSample), (0, halfSample), (880, len(audioData) - self.sampleRate)]
+        # notes = []
+        # for i in range(self.channels):
+        #     notes.append(noteData)
         return notes
 
     def initialized(self):
