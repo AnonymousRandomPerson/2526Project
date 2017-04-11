@@ -19,8 +19,8 @@ class AudioProcessor:
     HIGHEST_NOTE = 4186.09
     
     def __init__(self):
-        self.fileTrack = None
-        self.synthesizedTrack = None
+        self.fileTrack = AudioTrack()
+        self.synthesizedTrack = AudioTrack()
 
         self.channels = 1
         self.audioLength = 0
@@ -52,7 +52,7 @@ class AudioProcessor:
             self.channels = len(fileData[0])
         except:
             self.channels = 1
-        self.fileTrack = AudioTrack(fileData)
+        self.fileTrack.loadSamples(fileData)
         self.synthesizeInstrument()
         self.player.loadAudioFile()
 
@@ -118,10 +118,10 @@ class AudioProcessor:
     def synthesizeInstrument(self):
         """Creates new instrument data to match the current loaded track."""
 
-        if self.fileTrack:
+        if self.fileTrack.baseSamples is not None:
             notes = self.detectPitches()
             synthesizedData = self.currentInstrument.matchNotes(notes, self.sampleRate)
-            self.synthesizedTrack = AudioTrack(synthesizedData)
+            self.synthesizedTrack.loadSamples(synthesizedData)
             self.reloadData(1)
 
     def detectPitches(self):
@@ -235,11 +235,11 @@ class AudioProcessor:
                 
         print(notes)
 
-        halfSample = int(self.sampleRate / 2)
-        noteData = [(331.57894736842104, halfSample), (0, halfSample), (265.66265060240966, len(audioData) - self.sampleRate)]
-        notes = []
-        for i in range(self.channels):
-            notes.append(noteData)
+        # halfSample = int(self.sampleRate / 2)
+        # noteData = [(440, halfSample), (0, halfSample), (880, len(audioData) - self.sampleRate)]
+        # notes = []
+        # for i in range(self.channels):
+        #     notes.append(noteData)
         return notes
 
     def initialized(self):
@@ -270,17 +270,21 @@ class AudioProcessor:
 class AudioTrack():
     """Data about an audio track."""
 
-    def __init__(self, samples):
+    def __init__(self):
+        """Initializes an audio track."""
+        self.loadSamples(None)
+        self.volume = np.float32(1.0)
+        self.enabled = True
+
+    def loadSamples(self, samples):
         """
-        Initializes an audio track.
+        Loads samples into the audio track.
 
         Args:
             samples: The samples in the audio track.
         """
         self.samples = samples
         self.baseSamples = samples
-        self.volume = np.float32(1.0)
-        self.enabled = True
 
     def reload(self):
         """

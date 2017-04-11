@@ -86,8 +86,9 @@ class Beep(Instrument):
         seconds = duration / sampleRate
 
         # Try to end the wave close to 0.
-        waveDuration = int(frequency * int(duration / frequency))
-        time = np.linspace(0, seconds, waveDuration)
+        truncatedSeconds = int(seconds * frequency) / frequency
+        waveDuration = int(int(seconds * frequency) * sampleRate / frequency)
+        time = np.linspace(0, truncatedSeconds, waveDuration)
         samples = np.sin(frequency * 2 * np.pi * time)
         samples = np.append(samples, np.zeros(duration - waveDuration))
 
@@ -116,27 +117,32 @@ class AcousticGuitar(Instrument):
         # Karplus-Strong algorithm, subtractive synthesis from white noise
         bufferLength = int(sampleRate / frequency)
         buffer = np.random.standard_normal(bufferLength)
-        last = buffer[0]
+
         # Delay effect
-        delayLine = queue.Queue(maxsize = self.delaySize)
+        scaledDelaySize = int(self.delaySize * bufferLength / 100)
+        print(scaledDelaySize)
+        delayLine = queue.Queue(maxsize = scaledDelaySize)
         bufferCounter = 0
+
+        decay = 0.999
+
         for i in range(0, duration):
             # Low-pass filter
-            current = (last + buffer[bufferCounter]) / 2
+            current = buffer[bufferCounter]
             if delayLine.full():
                 delayed = delayLine.get()
-                delayed *= 0.999
+                next = delayLine.queue[0]
+                average = (delayed + next) / 2 * decay
                 # Feedback system
-                current += delayed
+                current += average
                 current /= 2
 
             samples.append(current)
             delayLine.put(current)
-            last = current
             buffer[bufferCounter] = current
 
             bufferCounter += 1
-            if bufferCounter >= len(buffer):
+            if bufferCounter >= bufferLength:
                 bufferCounter = 0
         
         if debug:
