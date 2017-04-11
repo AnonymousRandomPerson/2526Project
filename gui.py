@@ -141,7 +141,7 @@ class Gui:
     def loadAudioFile(self):
         """Prompts the user to select an audio file for the base of the application."""
         audioFile = None
-        audioFile = "/Users/chenghanngan/Documents/School/GT/PickAR/PickAR/Assets/Sounds/All Collected.wav"
+        #audioFile = "/Users/chenghanngan/Documents/School/GT/PickAR/PickAR/Assets/Sounds/All Collected.wav"
 
         if not audioFile:
             audioFile = filedialog.askopenfilename()

@@ -11,24 +11,37 @@ debug = False
 class Instrument:
     """A synthesized instrument."""
     
-    def matchNotes(self, fileData, sampleRate):
+    def matchNotes(self, notes, sampleRate):
         """
-        Creates a musical excerpt that attempts to match the notes of the given audio data on the instrument.
+        Creates a musical excerpt that attempts to match the given notes on the instrument.
 
         Args:
-            fileData: The audio data to match.
+            notes: The notes to produce sounds for.
             sampleRate: The sample rate to create audio for.
 
         Returns:
-            A list of samples that match the notes in the given audio data.
+            A list of samples that match the given notes.
         """
-        notes = [(440, sampleRate), (880, len(fileData) - sampleRate)]
         samples = []
-        
-        for note in notes:
-            samples = np.append(samples, self.getNote(note[0], note[1], sampleRate))
 
-        samples = self.duplicateChannel(samples)
+        for channel in notes:
+            channelSamples = []
+            for note in channel:
+                if note[0] == 0:
+                    newSamples = np.zeros(note[1])
+                else:
+                    newSamples = self.getNote(note[0], note[1], sampleRate)
+
+                for sample in newSamples:
+                    channelSamples.append(np.float32(sample))
+
+            samples.append(channelSamples)
+
+        if len(notes) > 1:
+            samples = np.transpose(samples)
+        else:
+            samples = samples[0]
+
         return samples
 
     def duplicateChannel(self, channel):
@@ -186,6 +199,15 @@ class Trumpet(Instrument):
         """
         seconds = duration / sampleRate
 
+        # ADSR curve
+        attackLength = int(0.075 * sampleRate)
+        decayLength = int(0.3 * sampleRate)
+        releaseLength = int(0.2 * sampleRate)
+        sustainLength = duration - attackLength - decayLength - releaseLength
+
+        if duration < attackLength:
+            return np.zeros(duration)
+
         # Additive synthesis
         envelope = [3.6, 2.825, 3, 2.688, 1.464, 1.520, 1.122, 0.940, 0.738, 0.495, 0.362, 0.237, 0.154, 0.154, 0.101, 0.082, 0.054, 0.038, 0.036]
 
@@ -203,21 +225,18 @@ class Trumpet(Instrument):
             newSamples[i] = alpha * (newSamples[i - 1] + samples[i] - samples[i - 1])
         samples = newSamples
 
-        # ADSR curve
-        attackLength = int(0.075 * sampleRate)
-        decayLength = int(0.3 * sampleRate)
-        releaseLength = int(0.2 * sampleRate)
-        sustainLength = duration - attackLength - decayLength - releaseLength
+        peak = 0.1
+        sustain = peak * 0.8
 
-        if sustainLength >= 0:
-            peak = 0.1
-            sustain = peak * 0.8
-
-            adsr = np.linspace(0, peak, attackLength)
+        adsr = np.linspace(0, peak, attackLength)
+        if sustainLength < 0:
+            # Quickly fade out after attack if duration is too short for full ADSR curve.
+            adsr = np.append(adsr, np.linspace(peak, 0, duration - attackLength))
+        else:
             adsr = np.append(adsr, np.linspace(peak, sustain, decayLength))
             adsr = np.append(adsr, np.full(sustainLength, sustain))
             adsr = np.append(adsr, np.linspace(sustain, 0, releaseLength))
 
-            samples *= adsr
+        samples *= adsr
 
         return samples

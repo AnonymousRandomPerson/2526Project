@@ -1,14 +1,21 @@
 import numpy as np
+from scipy import signal
 import soundfile as sf
+
+import matplotlib
+matplotlib.use("TkAgg")
+import matplotlib.pylab as plt
 
 import audioplayer
 import instrument
+
+# Whether to plot the returned signals.
+debug = False
 
 class AudioProcessor:
     """Handles direct processing of audio data."""
     
     def __init__(self):
-        self.audioData = []
         self.fileTrack = None
         self.synthesizedTrack = None
 
@@ -38,10 +45,12 @@ class AudioProcessor:
         """
         fileData, self.sampleRate = sf.read(filePath, dtype = 'float32')
         self.audioLength = len(fileData)
-        self.channels = len(fileData[0])
+        try:
+            self.channels = len(fileData[0])
+        except:
+            self.channels = 1
         self.fileTrack = AudioTrack(fileData)
         self.synthesizeInstrument()
-        self.audioData = self.fileTrack.samples + self.synthesizedTrack.samples
         self.player.loadAudioFile()
 
     def getTrackByIndex(self, trackIndex):
@@ -107,9 +116,80 @@ class AudioProcessor:
         """Creates new instrument data to match the current loaded track."""
 
         if self.fileTrack:
-            synthesizedData = self.currentInstrument.matchNotes(self.fileTrack.baseSamples, self.sampleRate)
+            notes = self.detectPitches()
+            synthesizedData = self.currentInstrument.matchNotes(notes, self.sampleRate)
             self.synthesizedTrack = AudioTrack(synthesizedData)
             self.reloadData(1)
+
+    def detectPitches(self):
+        """
+        Does pitch detection on the currently loaded audio file.
+
+        Returns:
+            A list of lists [frequency, sample duration] representing notes that were detected.
+        """
+        audioData = self.fileTrack.baseSamples
+        notes = [[], []]
+        duration = len(audioData)
+        prevNotes = [None, None]
+
+        increment = 500
+        sampleDuration = increment
+        startIndex = 0
+        lastNote = 0
+        startIndex = duration
+        while startIndex < duration:
+            for channel in range(self.channels):
+                prevNote = prevNotes[channel]
+                channelNotes = notes[channel]
+                endIndex = startIndex + increment
+                if endIndex > duration:
+                    endIndex = duration
+                    sampleDuration = duration - startIndex
+                currentSamples = audioData[startIndex:endIndex, channel]
+
+                # Autocorrelation pitch detection.
+                autocorrelation = signal.correlate(currentSamples, currentSamples)
+                autoLength = len(autocorrelation)
+
+                peakCheck = sampleDuration
+                difference = 0
+                while difference <= 0 and peakCheck + 1 < autoLength:
+                    last = autocorrelation[peakCheck]
+                    current = autocorrelation[peakCheck + 1]
+                    difference = current - last
+                    peakCheck += 1
+        
+                if debug:
+                    time = np.linspace(-self.audioLength / self.sampleRate, self.audioLength / self.sampleRate, autoLength)
+                    plt.plot(time, autocorrelation)
+                    plt.show()
+
+                maxIndex = peakCheck
+                maxValue = 0
+                for i in range(peakCheck, autoLength):
+                    current = abs(autocorrelation[i])
+                    if current > maxValue:
+                        maxValue = current
+                        maxIndex = i
+
+                frequency = self.sampleRate / (maxIndex - sampleDuration)
+                if prevNote and frequency == prevNote[0]:
+                    prevNote[1] += sampleDuration
+                else:
+                    newNote = [frequency, sampleDuration]
+                    channelNotes.append(newNote)
+                    prevNotes[channel] = newNote
+
+            startIndex += increment
+
+        halfSample = int(self.sampleRate / 2)
+        #notes = [[(440, halfSample), (0, halfSample), (880, len(audioData) - self.sampleRate)],]
+        noteData = [(440, len(audioData))]
+        notes = []
+        for i in range(self.channels):
+            notes.append(noteData)
+        return notes
 
     def initialized(self):
         """
@@ -148,7 +228,6 @@ class AudioTrack():
         """
         self.samples = samples
         self.baseSamples = samples
-        self.enabled = True
         self.volume = np.float32(1.0)
         self.enabled = True
 
