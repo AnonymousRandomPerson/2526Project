@@ -14,6 +14,9 @@ debug = False
 
 class AudioProcessor:
     """Handles direct processing of audio data."""
+
+    # The highest note that pitch detection will recognize.
+    HIGHEST_NOTE = 4186.09
     
     def __init__(self):
         self.fileTrack = None
@@ -133,7 +136,6 @@ class AudioProcessor:
         for channel in range(self.channels):
             notes.append([])
         duration = len(audioData)
-        prevNotes = [None, None]
 
         increment = 500
         sampleDuration = increment
@@ -141,7 +143,6 @@ class AudioProcessor:
         lastNote = 0
         while startIndex < duration:
             for channel in range(self.channels):
-                prevNote = prevNotes[channel]
                 channelNotes = notes[channel]
                 endIndex = startIndex + increment
                 if endIndex > duration:
@@ -178,20 +179,67 @@ class AudioProcessor:
                         maxIndex = i
 
                 frequency = self.sampleRate / (maxIndex - sampleDuration)
-                if prevNote and frequency == prevNote[0]:
-                    prevNote[1] += sampleDuration
-                else:
-                    newNote = [frequency, sampleDuration]
-                    channelNotes.append(newNote)
-                    prevNotes[channel] = newNote
+                newNote = [frequency, sampleDuration]
+                channelNotes.append(newNote)
 
             startIndex += increment
 
-        # halfSample = int(self.sampleRate / 2)
-        # noteData = [(440, halfSample), (0, halfSample), (880, len(audioData) - self.sampleRate)]
-        # notes = []
-        # for i in range(self.channels):
-        #     notes.append(noteData)
+        semitone = 2 ** (1 / 12)
+        for channel in range(self.channels):
+            channelNotes = notes[channel]
+
+            def mergeNotes():
+                """Merges notes that are very similar to each other."""
+                i = 0
+                prevNote = None
+                while i < len(channelNotes):
+                    currentNote = channelNotes[i]
+                    currentFreq = currentNote[0]
+
+                    if currentFreq < 27.5 or currentFreq > AudioProcessor.HIGHEST_NOTE:
+                        # 0-out notes that are below A0 or above C8
+                        currentNote[0] = 0
+                        currentFreq = 0
+
+                    if not prevNote:
+                        prevNote = currentNote
+                        i += 1
+                        continue
+
+                    prevFreq = prevNote[0]
+
+                    sameNote = False
+                    if currentFreq == prevFreq:
+                        sameNote = True
+                    elif currentFreq < prevFreq:
+                        sameNote = currentFreq > prevFreq / semitone
+                    elif currentFreq > prevFreq:
+                        sameNote = currentFreq < prevFreq * semitone
+                    if sameNote:
+                        # Merge notes that are about the same (within a semitone).
+                        prevNote[1] += currentNote[1]
+                        del channelNotes[i]
+                    else:
+                        prevNote = currentNote
+                        i += 1
+
+            mergeNotes()
+            
+            tooShort = self.sampleRate / 10
+            for note in channelNotes:
+                # 0-out notes that are too short.
+                if note[1] < tooShort:
+                    note[0] = 0
+
+            mergeNotes()
+                
+        print(notes)
+
+        halfSample = int(self.sampleRate / 2)
+        noteData = [(331.57894736842104, halfSample), (0, halfSample), (265.66265060240966, len(audioData) - self.sampleRate)]
+        notes = []
+        for i in range(self.channels):
+            notes.append(noteData)
         return notes
 
     def initialized(self):

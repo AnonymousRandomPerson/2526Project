@@ -25,7 +25,7 @@ class Gui:
         self.createButton("Load audio file", self.loadAudioFile, rowCounter, 0)
 
         rowCounter += 1
-        # Error
+        # Error text.
 
         rowCounter += 1
         self.playFrame = Frame(self.frame)
@@ -45,7 +45,7 @@ class Gui:
         instruments = self.processor.getInstruments()
         currentInstrument = StringVar()
         currentInstrument.set(instruments[0])
-        currentInstrument.set("Beep")
+        currentInstrument.set("Acoustic Guitar")
         self.processor.selectInstrument(currentInstrument.get())
         instrumentSelect = OptionMenu(self.settingsFrame, currentInstrument, *instruments, command = self.selectInstrument)
         instrumentSelect.config(width = 13)
@@ -141,7 +141,7 @@ class Gui:
     def loadAudioFile(self):
         """Prompts the user to select an audio file for the base of the application."""
         audioFile = None
-        #audioFile = "/Users/chenghanngan/Documents/School/GT/PickAR/PickAR/Assets/Sounds/All Collected.wav"
+        audioFile = "/Users/chenghanngan/Documents/School/GT/MUSI2526/Project/2526Project/Sound Test/alto-sax copy.wav"
 
         if not audioFile:
             audioFile = filedialog.askopenfilename()

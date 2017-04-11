@@ -5,6 +5,8 @@ import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.pylab as plt
 
+import audioprocessor
+
 # Whether to plot the returned signals.
 debug = False
 
@@ -24,6 +26,8 @@ class Instrument:
         """
         samples = []
 
+        lpfCutoff = audioprocessor.AudioProcessor.HIGHEST_NOTE
+        alpha = lpfCutoff / sampleRate
         for channel in notes:
             channelSamples = []
             for note in channel:
@@ -31,6 +35,10 @@ class Instrument:
                     newSamples = np.zeros(note[1])
                 else:
                     newSamples = self.getNote(note[0], note[1], sampleRate)
+
+                # Low-pass filter to smooth out sound.
+                for i in range(1, len(newSamples)):
+                    newSamples[i] += alpha * (newSamples[i - 1] - newSamples[i])
 
                 for sample in newSamples:
                     channelSamples.append(np.float32(sample))
@@ -77,8 +85,11 @@ class Beep(Instrument):
         """
         seconds = duration / sampleRate
 
-        time = np.linspace(0, seconds, duration)
+        # Try to end the wave close to 0.
+        waveDuration = int(frequency * int(duration / frequency))
+        time = np.linspace(0, seconds, waveDuration)
         samples = np.sin(frequency * 2 * np.pi * time)
+        samples = np.append(samples, np.zeros(duration - waveDuration))
 
         return samples
 
@@ -103,7 +114,8 @@ class AcousticGuitar(Instrument):
         samples = []
 
         # Karplus-Strong algorithm, subtractive synthesis from white noise
-        buffer = np.random.standard_normal(int(sampleRate / frequency))
+        bufferLength = int(sampleRate / frequency)
+        buffer = np.random.standard_normal(bufferLength)
         last = buffer[0]
         # Delay effect
         delayLine = queue.Queue(maxsize = self.delaySize)
