@@ -48,6 +48,7 @@ class AudioProcessor:
         Args:
             filePath: The file path of the audio file.
         """
+        self.player.stop()
         fileData, self.sampleRate = sf.read(filePath, dtype = 'float32')
         self.audioLength = len(fileData)
         try:
@@ -194,7 +195,6 @@ class AudioProcessor:
                 currentSamples = audioData
             else:
                 currentSamples = audioData[:, channel]
-            print(currentSamples)
             channelNotes = notes[channel]
 
             def mergeNotes():

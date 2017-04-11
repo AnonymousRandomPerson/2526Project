@@ -48,7 +48,12 @@ class AudioPlayer:
         else:
             fileSamples = self.fileTrack.samples[self.playIndex:endIndex]
             synthesizedSamples = self.synthesizedTrack.samples[self.playIndex:endIndex]
-        samples = np.multiply(fileSamples, fileVolume) + np.multiply(synthesizedSamples, synthesizedVolume)
+        volumeFile = np.multiply(fileSamples, fileVolume)
+        volumeSynthesized = np.multiply(synthesizedSamples, synthesizedVolume)
+        try:
+            samples = volumeFile + volumeSynthesized
+        except ValueError:
+            samples = volumeFile
         flag = pa.paContinue
         self.playIndex += frameCount
         return (samples, flag)
