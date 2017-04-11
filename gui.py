@@ -45,7 +45,7 @@ class Gui:
         instruments = self.processor.getInstruments()
         currentInstrument = StringVar()
         currentInstrument.set(instruments[0])
-        currentInstrument.set("Beep")
+        currentInstrument.set("Electric Guitar")
         self.processor.selectInstrument(currentInstrument.get())
         instrumentSelect = OptionMenu(self.settingsFrame, currentInstrument, *instruments, command = self.selectInstrument)
         instrumentSelect.config(width = 13)

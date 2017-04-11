@@ -18,7 +18,7 @@ class AudioProcessor:
 
         self.player = audioplayer.AudioPlayer(self)
 
-        self.instruments = {"Beep": instrument.Beep(), "Acoustic Guitar": instrument.AcousticGuitar(), "Trumpet": instrument.Trumpet()}
+        self.instruments = {"Beep": instrument.Beep(), "Acoustic Guitar": instrument.AcousticGuitar(), "Electric Guitar": instrument.ElectricGuitar(), "Trumpet": instrument.Trumpet()}
         self.currentInstrument = None
 
     def getInstruments(self):

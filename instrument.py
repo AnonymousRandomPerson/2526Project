@@ -68,6 +68,10 @@ class Beep(Instrument):
 class AcousticGuitar(Instrument):
     """A synthesized acoustic guitar."""
 
+    def __init__(self):
+        """Initializes an acoustic guitar instrument."""
+        self.delaySize = 200
+
     def getBaseStringSound(self, frequency, duration, sampleRate):
         """
         Gets a plucked string note without any distortion effects.
@@ -85,7 +89,7 @@ class AcousticGuitar(Instrument):
         buffer = np.random.standard_normal(int(sampleRate / frequency))
         last = buffer[0]
         # Delay effect
-        delayLine = queue.Queue(maxsize = 200)
+        delayLine = queue.Queue(maxsize = self.delaySize)
         bufferCounter = 0
         for i in range(0, duration):
             # Low-pass filter
@@ -126,6 +130,39 @@ class AcousticGuitar(Instrument):
             A list of samples representing the note.
         """
         samples = self.getBaseStringSound(frequency, duration, sampleRate)
+
+        return samples
+
+class ElectricGuitar(AcousticGuitar):
+    """A synthesized electric guitar."""
+
+    def __init__(self):
+        """Initializes an electric guitar instrument."""
+        self.delaySize = 300
+
+    def getNote(self, frequency, duration, sampleRate):
+        """
+        Gets a note of a certain frequency.
+
+        Args:
+            frequency: The frequency of the note.
+            duration: The duration of the note in samples.
+
+        Returns:
+            A list of samples representing the note.
+        """
+        samples = AcousticGuitar.getBaseStringSound(self, frequency, duration, sampleRate)
+
+        # Bitcrusher effect, taking advantage of quantization noise.
+        crushFactor = 8
+        crushCounter = 0
+        currentIndex = 0
+        for i in range(duration):
+            samples[i] = samples[currentIndex]
+            crushCounter += 1
+            if crushCounter > crushFactor:
+                currentIndex += crushCounter
+                crushCounter = 0
 
         return samples
 
