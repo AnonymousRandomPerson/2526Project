@@ -22,6 +22,8 @@ class AudioProcessor:
         self.fileTrack = AudioTrack()
         self.synthesizedTrack = AudioTrack()
 
+        self.notes = None
+
         self.channels = 1
         self.audioLength = 0
         self.sampleRate = 0
@@ -53,6 +55,7 @@ class AudioProcessor:
         except:
             self.channels = 1
         self.fileTrack.loadSamples(fileData)
+        self.notes = None
         self.synthesizeInstrument()
         self.player.loadAudioFile()
 
@@ -119,8 +122,9 @@ class AudioProcessor:
         """Creates new instrument data to match the current loaded track."""
 
         if self.fileTrack.baseSamples is not None:
-            notes = self.detectPitches()
-            synthesizedData = self.currentInstrument.matchNotes(notes, self.sampleRate)
+            if self.notes is None:
+                self.notes = self.detectPitches()
+            synthesizedData = self.currentInstrument.matchNotes(self.notes, self.sampleRate)
             self.synthesizedTrack.loadSamples(synthesizedData)
             self.reloadData(1)
 
@@ -186,6 +190,11 @@ class AudioProcessor:
 
         semitone = 2 ** (1 / 12)
         for channel in range(self.channels):
+            if self.channels == 1:
+                currentSamples = audioData
+            else:
+                currentSamples = audioData[:, channel]
+            print(currentSamples)
             channelNotes = notes[channel]
 
             def mergeNotes():
@@ -226,7 +235,7 @@ class AudioProcessor:
             mergeNotes()
             
             # 0-out notes that are too short.
-            tooShort = self.sampleRate / 10
+            tooShort = self.sampleRate / 15
             for note in channelNotes:
                 if note[1] < tooShort:
                     note[0] = 0
@@ -238,7 +247,7 @@ class AudioProcessor:
                 if note[0] > 0:
                     loudEnough = False
                     for i in range(timeCounter, timeCounter + note[1]):
-                        if abs(audioData[i]) > amplitudeThreshold:
+                        if abs(currentSamples[i]) > amplitudeThreshold:
                             loudEnough = True
                             break
                     if not loudEnough:
