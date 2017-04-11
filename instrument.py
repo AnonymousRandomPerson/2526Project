@@ -120,7 +120,6 @@ class AcousticGuitar(Instrument):
 
         # Delay effect
         scaledDelaySize = int(self.delaySize * bufferLength / 100)
-        print(scaledDelaySize)
         delayLine = queue.Queue(maxsize = scaledDelaySize)
         bufferCounter = 0
 

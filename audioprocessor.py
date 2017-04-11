@@ -137,7 +137,7 @@ class AudioProcessor:
             notes.append([])
         duration = len(audioData)
 
-        increment = 500
+        increment = int(self.sampleRate / 44.1)
         sampleDuration = increment
         startIndex = 0
         lastNote = 0
@@ -225,11 +225,25 @@ class AudioProcessor:
 
             mergeNotes()
             
+            # 0-out notes that are too short.
             tooShort = self.sampleRate / 10
             for note in channelNotes:
-                # 0-out notes that are too short.
                 if note[1] < tooShort:
                     note[0] = 0
+
+            # 0-out notes that are too soft.
+            amplitudeThreshold = 0.1
+            timeCounter = 0
+            for note in channelNotes:
+                if note[0] > 0:
+                    loudEnough = False
+                    for i in range(timeCounter, timeCounter + note[1]):
+                        if abs(audioData[i]) > amplitudeThreshold:
+                            loudEnough = True
+                            break
+                    if not loudEnough:
+                        note[0] = 0
+                timeCounter += note[1]
 
             mergeNotes()
                 
