@@ -22,7 +22,11 @@ class Instrument:
         Returns:
             A list of samples that match the notes in the given audio data.
         """
-        samples = self.getNote(440, len(fileData), sampleRate)
+        notes = [(440, sampleRate), (880, len(fileData) - sampleRate)]
+        samples = []
+        
+        for note in notes:
+            samples = np.append(samples, self.getNote(note[0], note[1], sampleRate))
 
         samples = self.duplicateChannel(samples)
         return samples
