@@ -16,7 +16,7 @@ class AudioProcessor:
     """Handles direct processing of audio data."""
 
     # The highest note that pitch detection will recognize.
-    HIGHEST_NOTE = 4186.09
+    HIGHEST_NOTE = 2093
     
     def __init__(self):
         self.fileTrack = AudioTrack()
@@ -235,7 +235,7 @@ class AudioProcessor:
             mergeNotes()
             
             # 0-out notes that are too short.
-            tooShort = self.sampleRate / 15
+            tooShort = self.sampleRate / 20
             for note in channelNotes:
                 if note[1] < tooShort:
                     note[0] = 0
