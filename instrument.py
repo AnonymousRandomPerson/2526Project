@@ -31,10 +31,10 @@ class Instrument:
         for channel in notes:
             channelSamples = []
             for note in channel:
-                if note[0] == 0:
-                    newSamples = np.zeros(note[1])
+                if note.frequency == 0:
+                    newSamples = np.zeros(note.duration)
                 else:
-                    newSamples = self.getNote(note[0], note[1], sampleRate)
+                    newSamples = self.getNote(note.frequency, note.duration, sampleRate)
 
                 # Low-pass filter to smooth out sound.
                 for i in range(1, len(newSamples)):

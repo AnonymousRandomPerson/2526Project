@@ -1,3 +1,5 @@
+import math
+import midiutil as midi
 import numpy as np
 from scipy import signal
 import soundfile as sf
@@ -17,6 +19,8 @@ class AudioProcessor:
 
     # The highest note that pitch detection will recognize.
     HIGHEST_NOTE = 2093
+    # The lowest note that pitch detection will recognize.
+    LOWEST_NOTE = 27.5
     
     def __init__(self):
         self.fileTrack = AudioTrack()
@@ -125,6 +129,7 @@ class AudioProcessor:
         if self.fileTrack.baseSamples is not None:
             if self.notes is None:
                 self.notes = self.detectPitches()
+                self.writeMidi(self.notes)
             synthesizedData = self.currentInstrument.matchNotes(self.notes, self.sampleRate)
             self.synthesizedTrack.loadSamples(synthesizedData)
             self.reloadData(1)
@@ -142,7 +147,7 @@ class AudioProcessor:
             notes.append([])
         duration = len(audioData)
 
-        increment = int(self.sampleRate / 44.1)
+        increment = int(self.sampleRate / 48)
         sampleDuration = increment
         startIndex = 0
         lastNote = 0
@@ -184,12 +189,11 @@ class AudioProcessor:
                         maxIndex = i
 
                 frequency = self.sampleRate / (maxIndex - sampleDuration)
-                newNote = [frequency, sampleDuration]
+                newNote = Note(frequency, sampleDuration)
                 channelNotes.append(newNote)
 
             startIndex += increment
 
-        semitone = 2 ** (1 / 12)
         for channel in range(self.channels):
             if self.channels == 1:
                 currentSamples = audioData
@@ -203,30 +207,24 @@ class AudioProcessor:
                 prevNote = None
                 while i < len(channelNotes):
                     currentNote = channelNotes[i]
-                    currentFreq = currentNote[0]
+                    currentMidi = currentNote.midi
 
-                    if currentFreq < 27.5 or currentFreq > AudioProcessor.HIGHEST_NOTE:
-                        # 0-out notes that are below A0 or above C8
-                        currentNote[0] = 0
-                        currentFreq = 0
+                    if not self.isNoteInRange(currentNote.frequency):
+                        # 0-out notes that are below A0 or above C8.
+                        currentNote.setZero()
+                        currentMidi = 0
+
 
                     if not prevNote:
                         prevNote = currentNote
                         i += 1
                         continue
 
-                    prevFreq = prevNote[0]
+                    prevMidi = prevNote.midi
 
-                    sameNote = False
-                    if currentFreq == prevFreq:
-                        sameNote = True
-                    elif currentFreq < prevFreq:
-                        sameNote = currentFreq > prevFreq / semitone
-                    elif currentFreq > prevFreq:
-                        sameNote = currentFreq < prevFreq * semitone
-                    if sameNote:
+                    if currentMidi == prevMidi:
                         # Merge notes that are about the same (within a semitone).
-                        prevNote[1] += currentNote[1]
+                        prevNote.duration += currentNote.duration
                         del channelNotes[i]
                     else:
                         prevNote = currentNote
@@ -235,35 +233,92 @@ class AudioProcessor:
             mergeNotes()
             
             # 0-out notes that are too short.
-            tooShort = self.sampleRate / 20
+            tooShort = self.sampleRate / 40
             for note in channelNotes:
-                if note[1] < tooShort:
-                    note[0] = 0
+                if note.duration < tooShort:
+                    note.setZero()
 
             # 0-out notes that are too soft.
-            amplitudeThreshold = 0.1
             timeCounter = 0
+            peak = 0
+            for sample in currentSamples:
+                peak = max(abs(sample), peak)
+            amplitudeThreshold = peak / 10
             for note in channelNotes:
-                if note[0] > 0:
+                if note.frequency > 0:
+                    # Find the peak of the note and 0-out notes that are much less than it.
+                    noteEnd = timeCounter + note.duration
                     loudEnough = False
-                    for i in range(timeCounter, timeCounter + note[1]):
+                    for i in range(timeCounter, noteEnd):
                         if abs(currentSamples[i]) > amplitudeThreshold:
                             loudEnough = True
                             break
                     if not loudEnough:
-                        note[0] = 0
-                timeCounter += note[1]
+                        note.frequency = 0
+                timeCounter += note.duration
+
+            mergeNotes()
+            
+            usedNotes = []
+            for note in channelNotes:
+                if self.isNoteInRange(note.frequency):
+                    for i in range(int(note.duration / increment)):
+                        usedNotes.append(note.midi)
+            mean = np.mean(usedNotes)
+            deviation = np.std(usedNotes)
+            print("Mean:", mean)
+            print("Standard deviation:", deviation)
+            for note in channelNotes:
+                if abs(note.midi - mean) > deviation * 2:
+                    note.setZero()
 
             mergeNotes()
                 
-        print(notes)
+        print("Notes:", notes)
 
-        # halfSample = int(self.sampleRate / 2)
-        # noteData = [(440, halfSample), (0, halfSample), (880, len(audioData) - self.sampleRate)]
-        # notes = []
-        # for i in range(self.channels):
-        #     notes.append(noteData)
         return notes
+
+    def writeMidi(self, notes):
+        """
+        Writes notes to a MIDI file.
+
+        Args:
+            notes: The notes to write to MIDI.
+        """
+        track = 0
+        channel = 0
+        time = 0
+        duration = 1
+        tempo = 100
+        volume = 100
+
+        samplesPerBeat = self.sampleRate / (tempo / 60)
+
+        midiFile = midi.MIDIFile(1)
+        midiFile.addTempo(track, time, tempo)
+
+        started = False
+        for note in notes[0]:
+            if note.midi > 0:
+                midiFile.addNote(track, channel, note.midi, time / samplesPerBeat, note.duration / samplesPerBeat, volume)
+                started = True
+            if started:
+                time += note.duration
+
+        with open("output.mid", "wb") as output_file:
+            midiFile.writeFile(output_file)
+
+    def isNoteInRange(self, note):
+        """
+        Checks if a note is in the audio processor's range.
+
+        Args:
+            note: The note to check.
+
+        Returns:
+            Whether the note is in the audio processor's range.
+        """
+        return note >= AudioProcessor.LOWEST_NOTE and note <= AudioProcessor.HIGHEST_NOTE
 
     def initialized(self):
         """
@@ -329,3 +384,42 @@ class AudioTrack():
             return self.volume
         else:
             return 0
+
+class Note():
+    """A description of a note in a track."""
+
+    def __init__(self, frequency, duration):
+        """
+        Initializes a note.
+
+        Args:
+            frequency: The frequency of the note.
+            duration: The duration of the note in samples.
+        """
+        self.duration = duration
+        self.setFrequency(frequency)
+
+    def setFrequency(self, frequency):
+        """
+        Sets the frequency of the note.
+
+        Args:
+            frequency: The frequency of the note.
+        """
+        self.midi = round(69 + 12 * math.log(frequency / 440, 2))
+        # Round the frequency to nearest semitone.
+        self.frequency = 2 ** ((self.midi - 69) / 12) * 440
+
+    def setZero(self):
+        """Sets the frequency of the note to 0."""
+        self.midi = 0
+        self.frequency = 0
+
+    def __repr__(self):
+        """
+        Converts the note into a string.
+
+        Returns:
+            The string representation of the note.
+        """
+        return "(" + str(self.frequency) + ", " + str(self.duration) + ")"
