@@ -36,9 +36,13 @@ class Instrument:
                 else:
                     newSamples = self.getNote(note.frequency, note.duration, sampleRate)
 
+                numSamples = len(newSamples)
                 # Low-pass filter to smooth out sound.
-                for i in range(1, len(newSamples)):
+                for i in range(1, numSamples):
                     newSamples[i] += alpha * (newSamples[i - 1] - newSamples[i])
+                
+                for i in range(0, numSamples):
+                    newSamples[i] *= note.volume
 
                 for sample in newSamples:
                     channelSamples.append(np.float32(sample))

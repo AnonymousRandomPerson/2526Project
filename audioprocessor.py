@@ -147,7 +147,7 @@ class AudioProcessor:
             notes.append([])
         duration = len(audioData)
 
-        increment = int(self.sampleRate / 48)
+        increment = int(self.sampleRate / 16)
         sampleDuration = increment
         startIndex = 0
         lastNote = 0
@@ -231,34 +231,31 @@ class AudioProcessor:
                         i += 1
 
             mergeNotes()
-            
-            # 0-out notes that are too short.
-            tooShort = self.sampleRate / 40
-            for note in channelNotes:
-                if note.duration < tooShort:
-                    note.setZero()
 
-            # 0-out notes that are too soft.
-            timeCounter = 0
+            # Find the maximum volume of the track.
             peak = 0
             for sample in currentSamples:
                 peak = max(abs(sample), peak)
-            amplitudeThreshold = peak / 10
+
+            # Change volumes of notes based on peaks of original track.
+            timeCounter = 0
             for note in channelNotes:
                 if note.frequency > 0:
-                    # Find the peak of the note and 0-out notes that are much less than it.
                     noteEnd = timeCounter + note.duration
-                    loudEnough = False
+                    maxSample = 0
                     for i in range(timeCounter, noteEnd):
-                        if abs(currentSamples[i]) > amplitudeThreshold:
-                            loudEnough = True
-                            break
-                    if not loudEnough:
-                        note.frequency = 0
+                        maxSample = max(maxSample, abs(currentSamples[i]))
+                    note.volume = maxSample / peak
                 timeCounter += note.duration
+
+            # 0-out notes that are too soft.
+            for note in channelNotes:
+                if note.frequency > 0 and note.volume < 0.2:
+                    note.setZero()
 
             mergeNotes()
             
+            # 0 out notes that deviate too far from the mean note.
             usedNotes = []
             for note in channelNotes:
                 if self.isNoteInRange(note.frequency):
@@ -269,10 +266,12 @@ class AudioProcessor:
             print("Mean:", mean)
             print("Standard deviation:", deviation)
             for note in channelNotes:
-                if abs(note.midi - mean) > deviation * 2:
+                difference = abs(note.midi - mean)
+                if difference > deviation * 2:
                     note.setZero()
 
             mergeNotes()
+                
                 
         print("Notes:", notes)
 
@@ -290,7 +289,6 @@ class AudioProcessor:
         time = 0
         duration = 1
         tempo = 100
-        volume = 100
 
         samplesPerBeat = self.sampleRate / (tempo / 60)
 
@@ -300,7 +298,7 @@ class AudioProcessor:
         started = False
         for note in notes[0]:
             if note.midi > 0:
-                midiFile.addNote(track, channel, note.midi, time / samplesPerBeat, note.duration / samplesPerBeat, volume)
+                midiFile.addNote(track, channel, note.midi, time / samplesPerBeat, note.duration / samplesPerBeat, int(127 * note.volume))
                 started = True
             if started:
                 time += note.duration
@@ -398,6 +396,7 @@ class Note():
         """
         self.duration = duration
         self.setFrequency(frequency)
+        self.volume = 1
 
     def setFrequency(self, frequency):
         """
@@ -414,6 +413,7 @@ class Note():
         """Sets the frequency of the note to 0."""
         self.midi = 0
         self.frequency = 0
+        self.volume = 0
 
     def __repr__(self):
         """

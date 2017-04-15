@@ -12,7 +12,7 @@ class Gui:
     def __init__(self):
         """Initializes the screen elements."""
         self.root = Tk()
-        self.root.wm_title("2526 Project")
+        self.root.wm_title("Instrument Changer")
 
         self.frame = Frame(self.root)
         self.frame.grid(row = 0, column = 0)
