@@ -139,7 +139,7 @@ class AudioProcessor:
         Does pitch detection on the currently loaded audio file.
 
         Returns:
-            A list of lists [frequency, sample duration] representing notes that were detected.
+            A list of notes that were detected.
         """
         audioData = self.fileTrack.baseSamples
         notes = []
@@ -255,7 +255,7 @@ class AudioProcessor:
 
             mergeNotes()
             
-            # 0 out notes that deviate too far from the mean note.
+            # 0 out notes that deviate too far.
             usedNotes = []
             for note in channelNotes:
                 if self.isNoteInRange(note.frequency):
@@ -265,15 +265,28 @@ class AudioProcessor:
             deviation = np.std(usedNotes)
             print("Mean:", mean)
             print("Standard deviation:", deviation)
+            lastNote = None
             for note in channelNotes:
                 difference = abs(note.midi - mean)
+                lastDifference = 0
+                if lastNote:
+                    lastDifference = abs(lastNote - note.midi)
                 if difference > deviation * 2:
+                    # Throw out notes that deviate too far from the mean.
                     note.setZero()
+                elif (lastDifference > deviation * 2 or lastDifference >= 12) and note.duration == increment:
+                    # Throw out notes that make too large of a jump.
+                    note.setZero()
+                if note.midi > 0:
+                    lastNote = note.midi
+                elif note.duration > increment:
+                    # Reset last note if there is silence for a while.
+                    lastNote = None
 
             mergeNotes()
                 
                 
-        print("Notes:", notes)
+        print("Notes:", notes[0])
 
         return notes
 
@@ -287,9 +300,37 @@ class AudioProcessor:
         track = 0
         channel = 0
         time = 0
-        duration = 1
-        tempo = 100
 
+        # # Guess the tempo of the piece based on the most common note duration
+        # noteDurations = {}
+        # for note in notes[0]:
+        #     if note.midi > 0:
+        #         if note.duration in noteDurations:
+        #             noteDurations[note.duration] += 1
+        #         else:
+        #             noteDurations[note.duration] = 1
+        # best = None
+        # for duration, count in noteDurations.items():
+        #     if not best or best[1] < count:
+        #         best = (duration, count)
+        #     elif best[1] == count and duration > best[0]:
+        #         best = (duration, count)
+
+        # bestDuration = best[0]
+        # if bestDuration > 0:
+        #     bestTempo = int(60 / (bestDuration / self.sampleRate))
+        #     # Correct tempos that are abnormally slow/fast.
+        #     while bestTempo > 200:
+        #         bestTempo = bestTempo >> 1
+        #     if bestTempo > 0:
+        #         while bestTempo < 40:
+        #             bestTempo = bestTempo << 1
+        # else:
+        #     bestTempo = 120
+        # tempo = bestTempo
+        # print("Tempo:", tempo)
+
+        tempo = 100
         samplesPerBeat = self.sampleRate / (tempo / 60)
 
         midiFile = midi.MIDIFile(1)
@@ -300,6 +341,7 @@ class AudioProcessor:
             if note.midi > 0:
                 midiFile.addNote(track, channel, note.midi, time / samplesPerBeat, note.duration / samplesPerBeat, int(127 * note.volume))
                 started = True
+            # Ignore silence at the beginning of the note sequence.
             if started:
                 time += note.duration
 
