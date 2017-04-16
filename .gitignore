@@ -92,4 +92,5 @@ ENV/
 
 Sound Test*
 output.mid
+output.wav
 MidiTest.band*

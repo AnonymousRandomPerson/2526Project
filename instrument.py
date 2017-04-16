@@ -130,11 +130,11 @@ class AcousticGuitar(Instrument):
         decay = 0.999
 
         for i in range(0, duration):
-            # Low-pass filter
             current = buffer[bufferCounter]
             if delayLine.full():
                 delayed = delayLine.get()
                 next = delayLine.queue[0]
+                # Low-pass filter
                 average = (delayed + next) / 2 * decay
                 # Feedback system
                 current += average

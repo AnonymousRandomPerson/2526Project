@@ -131,6 +131,7 @@ class AudioProcessor:
                 self.notes = self.detectPitches()
                 self.writeMidi(self.notes)
             synthesizedData = self.currentInstrument.matchNotes(self.notes, self.sampleRate)
+            sf.write('output.wav', synthesizedData, self.sampleRate)
             self.synthesizedTrack.loadSamples(synthesizedData)
             self.reloadData(1)
 
